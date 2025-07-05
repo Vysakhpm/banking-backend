@@ -1,127 +1,107 @@
-import React, { useState } from "react";
-import axios from "axios";
+import re
+import random
 
-const API_BASE = "https://banking-backend-vjmt.onrender.com";
+def solve_banking_question(question):
+    try:
+        # Extract Principal (P)
+        p_match = re.search(r"(?:₹|Rs\.?)\s?(\d+)", question)
+        P = int(p_match.group(1)) if p_match else None
 
-export default function BankingSolver() {
-  const [user, setUser] = useState({ name: "", mobile: "", chapter: "Banking" });
-  const [chat, setChat] = useState([]);
-  const [input, setInput] = useState("");
-  const [image, setImage] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
-  const [summary, setSummary] = useState("");
-  const [practiceQuestion, setPracticeQuestion] = useState("");
-  const [mockTest, setMockTest] = useState(null);
+        # Extract Time (n in months)
+        n_match = re.search(r"(\d+)\s*(?:months|month)", question, re.IGNORECASE)
+        n = int(n_match.group(1)) if n_match else None
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    setImage(file);
-  };
+        # Extract Interest Rate (r)
+        r_match = re.search(r"(\d+\.?\d*)\s*%|at\s*(\d+\.?\d*)\s*p\.a\.", question, re.IGNORECASE)
+        r = float(r_match.group(1) or r_match.group(2)) if r_match else None
 
-  const handleChatSubmit = async () => {
-    let question = input;
+        if not all([P, n, r]):
+            return "❗Sorry, the question format is not clear. Please ensure it includes monthly amount, time, and interest rate."
 
-    if (image) {
-      const formData = new FormData();
-      formData.append("image", image);
-      try {
-        const res = await axios.post(`${API_BASE}/ocr`, formData);
-        question = res.data.text;
-      } catch (error) {
-        setChat([...chat, { role: "bot", message: "❌ Error processing image." }]);
-        return;
-      }
-    }
+        # Calculate Interest
+        I = (P * n * (n + 1) * r) / (2 * 12 * 100)
 
-    const updatedChat = [...chat, { role: "user", message: question }];
-    setChat(updatedChat);
-    setInput("");
-    setImage(null);
+        # Maturity Value
+        M = P * n + I
 
-    try {
-      const res = await axios.post(`${API_BASE}/solve`, {
-        chapter: user.chapter,
-        question,
-      });
-      setChat([...updatedChat, { role: "bot", message: res.data.answer }]);
-    } catch (error) {
-      setChat([...updatedChat, { role: "bot", message: "❌ Server error." }]);
-    }
-  };
+        return (
+            f"📘 Step-by-step Solution:\n\n"
+            f"Given:\n"
+            f"Monthly Deposit (P) = ₹{P}\n"
+            f"Number of Months (n) = {n}\n"
+            f"Rate of Interest (r) = {r}% p.a.\n\n"
+            f"Formula for Interest:\n"
+            f"I = (P × n(n+1) × r) / (2 × 12 × 100)\n"
+            f"I = ({P} × {n} × {n+1} × {r}) / (2 × 12 × 100)\n"
+            f"I = ₹{I:.2f}\n\n"
+            f"Maturity Value = P × n + I = ₹{P} × {n} + ₹{I:.2f} = ₹{M:.2f}"
+        )
 
-  const fetchSummary = async () => {
-    const res = await axios.get(`${API_BASE}/summary`);
-    setSummary(res.data.summary);
-  };
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
 
-  const fetchPracticeQuestion = async () => {
-    const res = await axios.get(`${API_BASE}/generate-question`);
-    setPracticeQuestion(res.data.question);
-  };
 
-  const fetchMockTest = async () => {
-    const res = await axios.get(`${API_BASE}/mock-test`);
-    setMockTest(res.data);
-  };
-
-  if (!submitted) {
+def get_summary():
     return (
-      <div style={{ padding: "2rem", maxWidth: "500px", margin: "auto" }}>
-        <h2>Enter Your Details</h2>
-        <input type="text" placeholder="Your Name" value={user.name}
-          onChange={(e) => setUser({ ...user, name: e.target.value })} />
-        <input type="text" placeholder="Mobile Number" value={user.mobile}
-          onChange={(e) => setUser({ ...user, mobile: e.target.value })} />
-        <button onClick={() => setSubmitted(true)}>Continue</button>
-      </div>
-    );
-  }
+        "📚 Banking Chapter Summary (ICSE Class 10):\n\n"
+        "1. Recurring Deposit (RD) accounts involve depositing a fixed amount monthly.\n"
+        "2. Interest is calculated using:\n"
+        "   I = (P × n(n+1) × r) / (2 × 12 × 100)\n"
+        "   where:\n"
+        "     P = Monthly deposit\n"
+        "     n = Number of months\n"
+        "     r = Rate of interest per annum\n"
+        "3. Maturity Value = Total Deposit + Interest = P × n + I\n"
+        "4. Interest is computed on reducing balance method.\n"
+        "5. Deposits are made in fixed intervals — usually monthly."
+    )
 
-  return (
-    <div style={{ maxWidth: "800px", margin: "auto", padding: "2rem" }}>
-      <h2>Ask your Banking Chapter Doubt</h2>
-      {chat.map((c, i) => (
-        <div key={i} style={{
-          backgroundColor: c.role === "user" ? "#e6f7ff" : "#f6ffed",
-          padding: "10px", borderRadius: "6px", marginBottom: "8px"
-        }}>
-          <strong>{c.role === "user" ? "You" : "AI"}:</strong><br />
-          <span style={{ whiteSpace: "pre-wrap" }}>{c.message}</span>
-        </div>
-      ))}
 
-      <textarea placeholder="Type your question..." rows={3} value={input}
-        onChange={(e) => setInput(e.target.value)} style={{ width: "100%", padding: "8px" }} />
+def generate_question():
+    P = random.choice([200, 300, 500, 1000])
+    n = random.choice([6, 12, 24, 36])
+    r = random.choice([6, 7, 8, 9, 10])
+    return (
+        f"A person deposits ₹{P} per month for {n} months "
+        f"in a bank at {r}% per annum. What will be the maturity value?"
+    )
 
-      <div style={{ display: "flex", gap: "1rem", marginTop: "10px" }}>
-        <input type="file" accept="image/*" onChange={handleImageUpload} />
-        <button onClick={handleChatSubmit}>Ask</button>
-      </div>
 
-      <div style={{ marginTop: "20px" }}>
-        <button onClick={fetchSummary}>📘 Show Summary</button>
-        <button onClick={fetchPracticeQuestion}>🧠 Practice Question</button>
-        <button onClick={fetchMockTest}>📝 Mock Test</button>
-      </div>
+def generate_mock_test():
+    questions = []
+    for i in range(5):
+        q_text = generate_question()
+        p_match = re.search(r"₹(\d+)", q_text)
+        n_match = re.search(r"(\d+)\s*months", q_text)
+        r_match = re.search(r"at\s*(\d+)%", q_text)
 
-      {summary && <div><h3>Summary</h3><pre>{summary}</pre></div>}
-      {practiceQuestion && <div><h3>Try This</h3>{practiceQuestion}</div>}
-      {mockTest && (
-        <div>
-          <h3>Mock Test</h3>
-          {mockTest.questions.map((q, index) => (
-            <div key={index}>
-              <p><strong>Q{index + 1}:</strong> {q.question} ({q.marks} marks)</p>
-              <ul>
-                {Object.entries(q.marking_scheme).map(([step, mark], i) => (
-                  <li key={i}>{step}: {mark} mark(s)</li>
-                ))}
-              </ul>
-              <details><summary>Answer</summary><pre>{q.answer}</pre></details>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+        if p_match and n_match and r_match:
+            P = int(p_match.group(1))
+            n = int(n_match.group(1))
+            r = int(r_match.group(1))
+            I = (P * n * (n + 1) * r) / (2 * 12 * 100)
+            M = P * n + I
+
+            answer = (
+                f"Monthly deposit = ₹{P}\n"
+                f"Number of months = {n}\n"
+                f"Rate = {r}%\n"
+                f"I = (P × n(n+1) × r) / (2 × 12 × 100)\n"
+                f"I = ₹{I:.2f}\n"
+                f"Maturity Value = ₹{P*n} + ₹{I:.2f} = ₹{M:.2f}"
+            )
+
+            questions.append({
+                "question": q_text,
+                "marks": 5,
+                "marking_scheme": {
+                    "Correct formula": 1,
+                    "Correct substitution": 1,
+                    "Correct interest calculation": 1,
+                    "Correct total deposit": 1,
+                    "Final maturity value": 1
+                },
+                "answer": answer
+            })
+
+    return {"questions": questions}
