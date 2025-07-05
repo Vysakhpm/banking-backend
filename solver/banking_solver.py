@@ -3,46 +3,52 @@ import random
 
 def solve_banking_question(question):
     try:
-        # Extract monthly deposit (P)
+        # Extract deposit amount (P)
         p_match = re.search(r"(?:₹|Rs\.?)\s?(\d+)", question)
         P = int(p_match.group(1)) if p_match else None
 
-        # Extract time (n) in months
-        n_match = re.search(r"(\d+)\s*(months|month)", question, re.IGNORECASE)
-        n = int(n_match.group(1)) if n_match else None
+        # Extract time (n) in months or years
+        n_match = re.search(r"(\d+\.?\d*)\s*(months|month|years|year)", question, re.IGNORECASE)
+        if not n_match:
+            return "❗ Time period (months or years) not found."
+        time_val = float(n_match.group(1))
+        unit = n_match.group(2).lower()
+        n = int(time_val * 12 if "year" in unit else time_val)
 
         # Extract interest rate (r)
         r_match = re.search(r"(\d+\.?\d*)\s*%|at\s*(\d+\.?\d*)\s*p\.a", question, re.IGNORECASE)
         r = float(r_match.group(1) or r_match.group(2)) if r_match else None
 
-        # Ensure all values are extracted
         if not all([P, n, r]):
-            return "❗ Please ensure the question includes deposit, time (months), and rate."
+            return "❗ Please include deposit, time and interest rate in the question."
 
-        # Calculations
+        # Perform detailed step-by-step calculations
         total_deposit = P * n
-        interest = (P * n * (n + 1) * r) / (2 * 12 * 100)
-        maturity = total_deposit + interest
-
-        # Step-by-step calculation values
         n_n1 = n * (n + 1)
         pn_n1 = P * n_n1
         numerator = pn_n1 * r
         denominator = 2 * 12 * 100
+        I = numerator / denominator
+        M = total_deposit + I
 
         return (
-            f"✅ **Step-by-Step Solution**\n\n"
+            f"📘 **ICSE Format – Step-by-Step Solution**\n\n"
             f"**Given:**\n"
             f"Monthly Deposit (P) = ₹{P}\n"
-            f"Number of Months (n) = {n}\n"
-            f"Rate of Interest (r) = {r}% per annum\n\n"
-            f"👉 **Total Deposit** = ₹{P} × {n} = ₹{total_deposit}\n\n"
-            f"👉 **Interest Calculation**\n"
-            f"Formula: I = (P × n(n + 1) × r) / (2 × 12 × 100)\n"
-            f"        = ({P} × {n} × {n + 1} × {r}) / 2400\n"
-            f"        = {numerator:.0f} / 2400 = ₹{interest:.0f}\n\n"
-            f"👉 **Maturity Value** = ₹{total_deposit} + ₹{interest:.0f} = ₹{maturity:.0f}\n\n"
-            f"🟩 **Final Answer: ₹{maturity:.0f}**"
+            f"Time Period (n) = {n} months\n"
+            f"Rate of Interest (r) = {r}% p.a.\n\n"
+            f"**Step 1: Total Deposit**\n"
+            f"= ₹{P} × {n} = ₹{total_deposit}\n\n"
+            f"**Step 2: Interest Calculation**\n"
+            f"Interest = (P × n(n + 1) × r) / (2 × 12 × 100)\n"
+            f"         = ({P} × {n} × {n + 1} × {r}) / 2400\n"
+            f"         = ({P} × {n_n1} × {r}) / 2400\n"
+            f"         = ({pn_n1} × {r}) / 2400\n"
+            f"         = {numerator:.0f} / 2400 = ₹{I:.2f}\n\n"
+            f"**Step 3: Maturity Value**\n"
+            f"= Total Deposit + Interest\n"
+            f"= ₹{total_deposit} + ₹{I:.2f} = ₹{M:.2f}\n\n"
+            f"🟩 **Final Answer: Maturity Value = ₹{M:.2f}**"
         )
 
     except Exception as e:
