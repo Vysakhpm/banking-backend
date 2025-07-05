@@ -1,92 +1,127 @@
-import re
-import random
+import React, { useState } from "react";
+import axios from "axios";
 
-def solve_banking_question(question):
-    try:
-        p_match = re.search(r'(?:₹|Rs\.?|INR)?\s*(\d+(?:\.\d+)?)\s*per month', question, re.IGNORECASE)
-        n_match = re.search(r'for\s+(\d+(?:\.\d+)?)\s*(months|years)', question, re.IGNORECASE)
-        r_match = re.search(r'(\d+(?:\.\d+)?)\s*%\s*(?:p\.a\.|per annum)', question, re.IGNORECASE)
+const API_BASE = "https://banking-backend-vjmt.onrender.com";
 
-        if not (p_match and n_match and r_match):
-            return "❗Sorry, the question format is not clear. Please ensure it includes monthly amount, time, and interest rate."
+export default function BankingSolver() {
+  const [user, setUser] = useState({ name: "", mobile: "", chapter: "Banking" });
+  const [chat, setChat] = useState([]);
+  const [input, setInput] = useState("");
+  const [image, setImage] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [summary, setSummary] = useState("");
+  const [practiceQuestion, setPracticeQuestion] = useState("");
+  const [mockTest, setMockTest] = useState(null);
 
-        P = float(p_match.group(1))
-        n = float(n_match.group(1))
-        time_unit = n_match.group(2).lower()
-        r = float(r_match.group(1))
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    setImage(file);
+  };
 
-        if "year" in time_unit:
-            n *= 12
+  const handleChatSubmit = async () => {
+    let question = input;
 
-        interest = P * n * (n + 1) / 2 * r / (12 * 100)
-        maturity = P * n + interest
+    if (image) {
+      const formData = new FormData();
+      formData.append("image", image);
+      try {
+        const res = await axios.post(`${API_BASE}/ocr`, formData);
+        question = res.data.text;
+      } catch (error) {
+        setChat([...chat, { role: "bot", message: "❌ Error processing image." }]);
+        return;
+      }
+    }
 
-        explanation = (
-            f"📘 Question: {question.strip()}\n\n"
-            f"✅ Step-by-Step Solution:\n"
-            f"1. Monthly Deposit (P) = ₹{P}\n"
-            f"2. Number of Months (n) = {int(n)}\n"
-            f"3. Rate of Interest (r) = {r}% p.a.\n\n"
-            f"Step 1: Calculate Interest\n"
-            f"I = (P × n(n+1) × r) / (2 × 12 × 100)\n"
-            f"→ I = (₹{P} × {int(n)} × {int(n + 1)} × {r}) / 2400 = ₹{interest:.2f}\n\n"
-            f"Step 2: Maturity Value = Total Deposit + Interest\n"
-            f"→ M.V. = ₹{P} × {int(n)} + ₹{interest:.2f} = ₹{maturity:.2f}\n\n"
-            f"🧠 Final Answer: ₹{maturity:.2f}\n\n"
-            f"📝 Important Formula:\n"
-            f"Interest = (P × n(n+1) × r) / (2 × 12 × 100)"
-        )
+    const updatedChat = [...chat, { role: "user", message: question }];
+    setChat(updatedChat);
+    setInput("");
+    setImage(null);
 
-        return explanation
+    try {
+      const res = await axios.post(`${API_BASE}/solve`, {
+        chapter: user.chapter,
+        question,
+      });
+      setChat([...updatedChat, { role: "bot", message: res.data.answer }]);
+    } catch (error) {
+      setChat([...updatedChat, { role: "bot", message: "❌ Server error." }]);
+    }
+  };
 
-    except Exception as e:
-        return f"⚠️ An error occurred while solving: {str(e)}"
+  const fetchSummary = async () => {
+    const res = await axios.get(`${API_BASE}/summary`);
+    setSummary(res.data.summary);
+  };
 
-def get_summary():
+  const fetchPracticeQuestion = async () => {
+    const res = await axios.get(`${API_BASE}/generate-question`);
+    setPracticeQuestion(res.data.question);
+  };
+
+  const fetchMockTest = async () => {
+    const res = await axios.get(`${API_BASE}/mock-test`);
+    setMockTest(res.data);
+  };
+
+  if (!submitted) {
     return (
-        "📘 Banking Chapter Summary (Recurring Deposit Account)\n\n"
-        "1. A Recurring Deposit (R.D.) Account allows regular monthly savings.\n"
-        "2. Interest is calculated using:\n"
-        "   I = (P × n(n + 1) × r) / (2 × 12 × 100)\n"
-        "3. Maturity Value (M.V.) = (P × n) + I\n\n"
-        "Where:\n"
-        "- P = monthly deposit\n"
-        "- n = number of months\n"
-        "- r = annual rate of interest"
-    )
+      <div style={{ padding: "2rem", maxWidth: "500px", margin: "auto" }}>
+        <h2>Enter Your Details</h2>
+        <input type="text" placeholder="Your Name" value={user.name}
+          onChange={(e) => setUser({ ...user, name: e.target.value })} />
+        <input type="text" placeholder="Mobile Number" value={user.mobile}
+          onChange={(e) => setUser({ ...user, mobile: e.target.value })} />
+        <button onClick={() => setSubmitted(true)}>Continue</button>
+      </div>
+    );
+  }
 
-def generate_question():
-    sample_questions = [
-        "Kiran deposits ₹200 per month for 36 months. What is the maturity value at 11% p.a.?",
-        "Monica deposited ₹600 per month for 2 years. Find the maturity value at 10% p.a.",
-        "Ravi saves ₹150 per month for 18 months in an R.D. account. Interest rate is 9% per annum. What will he get on maturity?",
-        "Shalini deposited ₹1,000 monthly for 3 years at 8% p.a. What is the maturity amount?",
-        "Find the maturity value if Rs. 350 is deposited every month for 2 years at 12% interest."
-    ]
-    return random.choice(sample_questions)
+  return (
+    <div style={{ maxWidth: "800px", margin: "auto", padding: "2rem" }}>
+      <h2>Ask your Banking Chapter Doubt</h2>
+      {chat.map((c, i) => (
+        <div key={i} style={{
+          backgroundColor: c.role === "user" ? "#e6f7ff" : "#f6ffed",
+          padding: "10px", borderRadius: "6px", marginBottom: "8px"
+        }}>
+          <strong>{c.role === "user" ? "You" : "AI"}:</strong><br />
+          <span style={{ whiteSpace: "pre-wrap" }}>{c.message}</span>
+        </div>
+      ))}
 
-def generate_mock_test():
-    questions = [
-        {
-            "question": "Manish deposited ₹600 per month for 20 months at 10% p.a. Find the maturity value.",
-            "marks": 5,
-            "marking_scheme": {
-                "Identifying P, n, r": 1,
-                "Correct use of formula": 2,
-                "Correct interest calculation": 1,
-                "Final M.V. calculation": 1
-            },
-            "answer": solve_banking_question("Manish deposited ₹600 per month for 20 months at 10% p.a.")
-        },
-        {
-            "question": "Geeta deposited ₹350 per month for 15 months at 12% p.a. Find interest and maturity value.",
-            "marks": 5,
-            "marking_scheme": {
-                "Correct substitution": 2,
-                "Correct interest calculation": 2,
-                "Final maturity value": 1
-            },
-            "answer": solve_banking_question("Geeta deposited ₹350 per month for 15 months at 12% p.a.")
-        }
-    ]
-    return {"total_marks": 10, "questions": questions}
+      <textarea placeholder="Type your question..." rows={3} value={input}
+        onChange={(e) => setInput(e.target.value)} style={{ width: "100%", padding: "8px" }} />
+
+      <div style={{ display: "flex", gap: "1rem", marginTop: "10px" }}>
+        <input type="file" accept="image/*" onChange={handleImageUpload} />
+        <button onClick={handleChatSubmit}>Ask</button>
+      </div>
+
+      <div style={{ marginTop: "20px" }}>
+        <button onClick={fetchSummary}>📘 Show Summary</button>
+        <button onClick={fetchPracticeQuestion}>🧠 Practice Question</button>
+        <button onClick={fetchMockTest}>📝 Mock Test</button>
+      </div>
+
+      {summary && <div><h3>Summary</h3><pre>{summary}</pre></div>}
+      {practiceQuestion && <div><h3>Try This</h3>{practiceQuestion}</div>}
+      {mockTest && (
+        <div>
+          <h3>Mock Test</h3>
+          {mockTest.questions.map((q, index) => (
+            <div key={index}>
+              <p><strong>Q{index + 1}:</strong> {q.question} ({q.marks} marks)</p>
+              <ul>
+                {Object.entries(q.marking_scheme).map(([step, mark], i) => (
+                  <li key={i}>{step}: {mark} mark(s)</li>
+                ))}
+              </ul>
+              <details><summary>Answer</summary><pre>{q.answer}</pre></details>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
